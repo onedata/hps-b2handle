@@ -1,0 +1,3 @@
+[submodule "handle-proxy-service"]
+	path = handle-proxy-service
+	url = ssh://git@git.plgrid.pl:7999/vfs/handle-proxy-service

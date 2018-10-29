@@ -1,0 +1,12 @@
+{
+    "url": "http://onedata.org/share/LHASDJHASLKDJHpyp98hpiUABSDihPASUD",
+    "serviceProperties": {
+        "allowTemplateOverride": false,
+        "endpoint": "https://hdl.grnet.gr:8001/api/handles",
+        "username": "301:21.T15999/DATAHUB",
+        "password": "PASSWORD",
+        "prefix": "21.T15999",
+        "type": "PID"
+    },
+    "metadata": {}
+}
