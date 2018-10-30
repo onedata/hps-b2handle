@@ -38,13 +38,11 @@ def register_handle(hndl, handleProperties):
         r = requests.put(handleEndpoint, json=handleData,
                 auth=HTTPBasicAuth(username, password))
 
-        log.info("GOT RESPONSE: " + r.text)
-
         handle = r.json()['handle']
 
         log.info("Registered PID under location: {}".format(handle))
 
-        return handle, r.status_code
+        return {"handle": handle}, r.status_code
     except KeyError as error:
         log.error("Invalid request: " + str(error))
         return 'Invalid request', 400
