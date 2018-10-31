@@ -3,6 +3,7 @@ import urllib.parse
 import requests
 from requests.auth import HTTPBasicAuth
 
+HNDL_RESOLVE_PREFIX = 'http://hdl.handle.net/'
 
 def resolve_handle(hndl, serviceProperties):
     return 'Not implemented', 501
@@ -38,7 +39,7 @@ def register_handle(hndl, handleProperties):
         r = requests.put(handleEndpoint, json=handleData,
                 auth=HTTPBasicAuth(username, password))
 
-        handle = r.json()['handle']
+        handle = HNDL_RESOLVE_PREFIX + r.json()['handle']
 
         log.info("Registered PID under location: {}".format(handle))
 
