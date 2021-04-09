@@ -25,5 +25,7 @@ ADD . /hps-b2handle
 
 WORKDIR /hps-b2handle/src
 
-CMD ["python3", "app.py"]
+VOLUME /hps-b2handle/certs/privkey.pem
+VOLUME /hps-b2handle/certs/cert.pem
 
+CMD ["python3", "app.py"]

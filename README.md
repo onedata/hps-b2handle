@@ -14,7 +14,7 @@ sudo pip install lxml connexion requests
 ```
 
 
-### Initialize submodules 
+### Initialize submodules
 To build this service first initialize and build the submodules:
 ```bash
 ./init-submodules.sh
@@ -36,6 +36,11 @@ open http://localhost:8080/api/v1/ui
 docker run -p 8080:8080 -t docker.onedata.org/hps-b2handle:1.0.0
 
 open http://localhost:8080/api/v1/ui
+```
+For PID registration services, which require cert based authorization, the key and cert should be mounted
+as Docker volumes, e.g.:
+```bash
+docker run -v $PWD/privkey.pem:/hps-b2handle/certs/privkey.pem -v $PWD/cert.pem:/hps-b2handle/certs/cert.pem onedata/hps-b2handle:1.0.0
 ```
 
 ## Testing from command line
