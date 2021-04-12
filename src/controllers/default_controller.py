@@ -70,7 +70,7 @@ def register_handle(hndl, handleProperties):
 
         handle = HNDL_RESOLVE_PREFIX + r.json()['handle']
 
-        if r.status_code == 204:
+        if r.ok:
             log.info("Registered PID under location: {}".format(handle))
         else:
             log.error("Handle registration failed: {}".format(r.status_code))
