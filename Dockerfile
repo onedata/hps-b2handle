@@ -1,4 +1,4 @@
-FROM debian:jessie
+FROM ubuntu:jammy
 
 #
 # Install python3
@@ -7,8 +7,6 @@ RUN apt-get update
 
 RUN apt-get install -y --no-install-recommends \
     ca-certificates \
-    libsqlite3-0 \
-    libssl1.0.0 \
     python3 \
     python3-pip \
     python3-lxml \
@@ -18,10 +16,9 @@ RUN apt-get install -y --no-install-recommends \
 #
 # Install HPS DataCite and it's dependencies
 #
-
-RUN pip3 install lxml connexion requests certifi
-
 ADD . /hps-b2handle
+
+RUN pip3 install -r /hps-b2handle/requirements.txt
 
 WORKDIR /hps-b2handle/src
 

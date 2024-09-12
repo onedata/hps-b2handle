@@ -88,8 +88,59 @@ def register_handle(hndl, handleProperties):
 
 
 def unregister_handle(hndl, serviceProperties):
-    return 'Not implemented', 501
+    try:
+        handleType = serviceProperties['type']
+        if handleType != 'PID':
+            raise "Invalid handle type " + str(handleType)
+        username = serviceProperties['username']
+        username = username.replace(':', '%3A')
+        password = serviceProperties['password']
+        endpoint = serviceProperties['endpoint']
+        if not endpoint.endswith('/'):
+            endpoint = endpoint + '/'
+        prefix = serviceProperties['prefix']
+
+        # Construct the handle URL
+        handleEndpoint = urllib.parse.urljoin(endpoint, "{}/{}".format(prefix, hndl))
+
+
+        log.info("Trying to unregister the handle {}/{} using {}".format(
+            prefix, hndl, handleEndpoint))
+
+        if username and password:
+            # Use basic authentication
+            log.info("Using basic authentication for unregister")
+            headers =  {}
+            headers['content-type'] = 'application/json'
+            headers['accept'] = 'application/json'
+            r = requests.delete(handleEndpoint, json={}, headers=headers, auth=HTTPBasicAuth(username, password))
+        elif os.path.getsize(HNDL_CERT_FILE) and os.path.getsize(HNDL_KEY_FILE):
+            # Use certificate-based authentication
+            log.info("Using cert-based authentication for unregister")
+            headers = {}
+            headers['content-type'] = 'application/json'
+            headers['authorization'] = 'Handle clientCert="true"'
+            r = requests.delete(handleEndpoint, headers=headers,
+                                cert=(HNDL_CERT_FILE, HNDL_KEY_FILE), verify=False)
+        else:
+            raise "Invalid or no authentication method provided"
+
+        if r.ok:
+            log.info("Successfully unregistered handle: {}".format(hndl))
+            return {"message": "Handle unregistered successfully"}, r.status_code
+        else:
+            log.error("Handle unregistration failed: {}".format(r.status_code))
+            return 'Failed to unregister handle', r.status_code
+    except KeyError as error:
+        log.error("Invalid request: " + str(error))
+        return 'Invalid request', 400
+    except requests.RequestException as error:
+        log.error("HANDLE service connection error: " + str(error))
+        return 'Internal server error', 500
+    except Exception as error:
+        log.error("Internal server error: " + str(error))
+        return 'Internal server error', 500
 
 
 def update_handle(hndl, handleProperties):
-    return 'Not implemented', 501
+    return '', 204
