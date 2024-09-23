@@ -70,6 +70,13 @@ def register_handle(hndl, handleProperties):
     shareUrl = handleProperties['url']
 
     # Prepare handle data
+    #
+    # The special HS_ADMIN entry is required to be later able to manage
+    # (update, delete) the handle. We currently assume that the account is
+    # in ADMINLIST and not USERLIST. This lets us use "200:0.NA/$prefix"
+    # as an HS_ADMIN value. Otherwise, we it would have to match the account
+    # username (e.g. "301:21.T15999/DATAHUB"). More info can be found in the
+    # docs: https://hdl.handle.net/20.1000/113
     handleData = {
         'values': [
             {
