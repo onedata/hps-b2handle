@@ -11,136 +11,122 @@ HNDL_KEY_FILE = '/hps-b2handle/certs/privkey.pem'
 def resolve_handle(hndl, serviceProperties):
     return 'Not implemented', 501
 
+def check_handle_type(serviceProperties):
+    handleType = serviceProperties.get('type')
+    if handleType != 'PID':
+        raise Exception("Invalid handle type " + str(handleType))
 
+def construct_handle_endpoint(serviceProperties, hndl):
+    endpoint = serviceProperties['endpoint']
+    if not endpoint.endswith('/'):
+        endpoint += '/'
+    prefix = serviceProperties['prefix']
+    handleEndpoint = urllib.parse.urljoin(endpoint, f"{prefix}/{hndl}")
+    return handleEndpoint
+
+def get_auth_headers(serviceProperties, action):
+    username = serviceProperties.get('username', '')
+    password = serviceProperties.get('password', '')
+    headers = {'Content-Type': 'application/json'}
+
+    if action == 'unregister' and username and password:
+        headers['Accept'] = 'application/json'
+
+    if username and password:
+        # Use basic authentication
+        auth = HTTPBasicAuth(username.replace(':', '%3A'), password)
+        cert = None
+        log.info("Using basic authentication for {}".format(action))
+    elif os.path.exists(HNDL_CERT_FILE) and os.path.exists(HNDL_KEY_FILE):
+        # Use certificate-based authentication
+        auth = None
+        headers['Authorization'] = 'Handle clientCert="true"'
+        cert = (HNDL_CERT_FILE, HNDL_KEY_FILE)
+        log.info("Using cert-based authentication for {}".format(action))
+    else:
+        raise Exception("Invalid or no authentication method provided")
+    return auth, headers, cert
+
+def handle_exceptions(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except KeyError as error:
+            log.error("Invalid request: " + str(error))
+            return 'Invalid request', 400
+        except requests.RequestException as error:
+            log.error("HANDLE service connection error: " + str(error))
+            return 'Internal server error', 500
+        except Exception as error:
+            log.error("Internal server error: " + str(error))
+            return 'Internal server error', 500
+    return wrapper
+
+@handle_exceptions
 def register_handle(hndl, handleProperties):
+    serviceProperties = handleProperties['serviceProperties']
+    check_handle_type(serviceProperties)
+    handleEndpoint = construct_handle_endpoint(serviceProperties, hndl)
+    shareUrl = handleProperties['url']
 
-    try:
-        serviceProperties = handleProperties['serviceProperties']
-        handleType = serviceProperties['type']
-        if handleType != 'PID':
-            raise "Invalid handle type " + str(handleType)
-        username = serviceProperties['username']
-        username = username.replace(':', '%3A')
-        password = serviceProperties['password']
-        endpoint = serviceProperties['endpoint']
-        if not endpoint.endswith('/'):
-            endpoint = endpoint + '/'
-        prefix = serviceProperties['prefix']
+    # Prepare handle data
+    handleData = {
+        'values': [
+            {
+                "index": 1,
+                "type": "url",
+                "data": shareUrl
+            },
+            {
+                "index": 100,
+                "type": "HS_ADMIN",
+                "data": {
+                    "format": "admin",
+                    "value": {
+                        "handle": "0.NA/{}".format(serviceProperties['prefix']),
+                        "index": 200,
+                        "permissions": "011111110011"
+                    }
+                }
+            }
+        ]
+    }
 
-        shareUrl = handleProperties['url']
+    log.info("Trying to register a handle {}/{} using {}".format(
+        serviceProperties['prefix'], hndl, handleEndpoint))
 
-        # Create handle endpoint URL
-        handleEndpoint = urllib.parse.urljoin(endpoint, "{}/{}".format(prefix, hndl))
+    log.info("Handle data: {}".format(handleData))
 
-        handleData = {}
-        handleData['values'] = []
-        handleData['values'].append({
-            "index": 1,
-            "type": "url",
-            "data": shareUrl})
-        handleData['values'].append({
-            "index": 100,
-            "type": "HS_ADMIN",
-            "data": {
-                 "format": "admin",
-                 "value": {"handle": "0.NA/'{}'".format(prefix),
-                          "index": 200,
-                          "permissions": "011111110011"}}})
+    auth, headers, cert = get_auth_headers(serviceProperties, 'register')
 
-        log.info("Trying to register a handle {}/{} using {}".format(
-            prefix, hndl, handleEndpoint))
+    r = requests.put(handleEndpoint, json=handleData, headers=headers, auth=auth, cert=cert, verify=False)
 
-        log.info("Handle data: {}".format(handleData))
-
-        if username and password:
-            # Use username and password authentication
-            log.info("Using basic authentication")
-            r = requests.put(handleEndpoint, json=handleData,
-                    auth=HTTPBasicAuth(username, password))
-        elif os.path.getsize(HNDL_CERT_FILE) and os.path.getsize(HNDL_KEY_FILE):
-            # Use certificate for authentication
-            log.info("Using cert based authentication")
-            headers =  {}
-            headers['content-type'] = 'application/json'
-            headers['authorization'] = 'Handle clientCert="true"'
-            r = requests.put(handleEndpoint, json=handleData, headers=headers,
-                    cert=(HNDL_CERT_FILE, HNDL_KEY_FILE), verify=False)
-        else:
-            raise "Invalid or no authentication method provided"
-
+    if r.ok:
         handle = HNDL_RESOLVE_PREFIX + r.json()['handle']
-
-        if r.ok:
-            log.info("Registered PID under location: {}".format(handle))
-        else:
-            log.error("Handle registration failed: {}".format(r.status_code))
-
+        log.info("Registered PID under location: {}".format(handle))
         return {"handle": handle}, r.status_code
-    except KeyError as error:
-        log.error("Invalid request: " + str(error))
-        return 'Invalid request', 400
-    except requests.RequestException as error:
-        log.error("HANDLE service connection error: " + str(error))
-        return 'Internal server error', 500
-    except Exception as error:
-        log.error("Internal server error: " + str(error))
-        return 'Internal server error', 500
+    else:
+        log.error("Handle registration failed: {}".format(r.status_code))
+        return 'Failed to register handle', r.status_code
 
-
+@handle_exceptions
 def unregister_handle(hndl, serviceProperties):
-    try:
-        handleType = serviceProperties['type']
-        if handleType != 'PID':
-            raise "Invalid handle type " + str(handleType)
-        username = serviceProperties['username']
-        username = username.replace(':', '%3A')
-        password = serviceProperties['password']
-        endpoint = serviceProperties['endpoint']
-        if not endpoint.endswith('/'):
-            endpoint = endpoint + '/'
-        prefix = serviceProperties['prefix']
+    check_handle_type(serviceProperties)
+    handleEndpoint = construct_handle_endpoint(serviceProperties, hndl)
 
-        # Construct the handle URL
-        handleEndpoint = urllib.parse.urljoin(endpoint, "{}/{}".format(prefix, hndl))
+    log.info("Trying to unregister the handle {}/{} using {}".format(
+        serviceProperties['prefix'], hndl, handleEndpoint))
 
+    auth, headers, cert = get_auth_headers(serviceProperties, 'unregister')
 
-        log.info("Trying to unregister the handle {}/{} using {}".format(
-            prefix, hndl, handleEndpoint))
+    r = requests.delete(handleEndpoint, headers=headers, auth=auth, cert=cert, verify=False)
 
-        if username and password:
-            # Use basic authentication
-            log.info("Using basic authentication for unregister")
-            headers =  {}
-            headers['content-type'] = 'application/json'
-            headers['accept'] = 'application/json'
-            r = requests.delete(handleEndpoint, json={}, headers=headers, auth=HTTPBasicAuth(username, password))
-        elif os.path.getsize(HNDL_CERT_FILE) and os.path.getsize(HNDL_KEY_FILE):
-            # Use certificate-based authentication
-            log.info("Using cert-based authentication for unregister")
-            headers = {}
-            headers['content-type'] = 'application/json'
-            headers['authorization'] = 'Handle clientCert="true"'
-            r = requests.delete(handleEndpoint, headers=headers,
-                                cert=(HNDL_CERT_FILE, HNDL_KEY_FILE), verify=False)
-        else:
-            raise "Invalid or no authentication method provided"
-
-        if r.ok:
-            log.info("Successfully unregistered handle: {}".format(hndl))
-            return {"message": "Handle unregistered successfully"}, r.status_code
-        else:
-            log.error("Handle unregistration failed: {}".format(r.status_code))
-            return 'Failed to unregister handle', r.status_code
-    except KeyError as error:
-        log.error("Invalid request: " + str(error))
-        return 'Invalid request', 400
-    except requests.RequestException as error:
-        log.error("HANDLE service connection error: " + str(error))
-        return 'Internal server error', 500
-    except Exception as error:
-        log.error("Internal server error: " + str(error))
-        return 'Internal server error', 500
-
+    if r.ok:
+        log.info("Successfully unregistered handle: {}".format(hndl))
+        return {"message": "Handle unregistered successfully"}, r.status_code
+    else:
+        log.error("Handle unregistration failed: {}".format(r.status_code))
+        return 'Failed to unregister handle', r.status_code
 
 def update_handle(hndl, handleProperties):
     return '', 204
