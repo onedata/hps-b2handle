@@ -25,4 +25,7 @@ WORKDIR /hps-b2handle/src
 VOLUME /hps-b2handle/certs/privkey.pem
 VOLUME /hps-b2handle/certs/cert.pem
 
-CMD ["python3", "app.py"]
+ENV HANDLE_PROXY_HOST=0.0.0.0
+ENV HANDLE_PROXY_PORT=8080
+
+ENTRYPOINT ["python3", "./app.py"]
