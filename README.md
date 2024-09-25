@@ -10,9 +10,8 @@ This implementation is specific for [B2HANDLE](https://www.eudat.eu/services/use
 ### Dependencies
 
 ```bash
-sudo pip install lxml connexion requests
+pip3 install -r requirements.txt
 ```
-
 
 ### Initialize submodules
 To build this service first initialize and build the submodules:
@@ -23,7 +22,10 @@ To build this service first initialize and build the submodules:
 ### Start the proxy service
 ```bash
 cd src
-./start.py
+./app.py
+# Optionally pass host and port for the server
+# Defaults are '0.0.0.0' and '8080'
+./app.py --host 127.0.0.1 --port 9999
 ```
 
 The service has a user interface which allows manual generation of REST requests:
