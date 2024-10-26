@@ -45,4 +45,4 @@ uvloop==0.20.0
 watchfiles==0.24.0
 webencodings==0.5.1
 websockets==13.0.1
-Werkzeug==3.0.4
+Werkzeug==3.0.6
